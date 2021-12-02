@@ -6,25 +6,88 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(modelr)
+library(mgcv)
+set.seed(1)
+knitr::opts_chunk$set(
+  fig.width = 6,
+  fig.asp = .6,
+  out.width = "90%"
+)
+theme_set(theme_minimal() + theme(legend.position = "bottom"))
+options(
+  ggplot2.continuous.colour = "viridis",
+  ggplot2.continuous.fill = "viridis"
+)
+scale_colour_discrete = scale_colour_viridis_d
+scale_fill_discrete = scale_fill_viridis_d
 ```
 
-## R Markdown
+```{r}
+birthweight_raw = 
+  read_csv("data/birthweight.csv") %>% 
+  janitor::clean_names()%>% 
+  mutate(
+    babysex = case_when(babysex == "1" ~ "male",
+                        babysex == "2" ~ "female"),
+    frace = case_when(frace == "1" ~ "White",
+                      frace == "2" ~ "Black",
+                      frace == "3" ~ "Asian",
+                      frace == "4" ~ "Puerto Rican", 
+                      frace == "8" ~ "Other",
+                      frace == "9" ~ "Unknown"),
+    malform = case_when(malform == "0" ~ "absent",
+                        malform == "1" ~ "present"),
+    mrace = case_when(mrace == "1" ~ "White",
+                      mrace == "2" ~ "Black",
+                      mrace == "3" ~ "Asian",
+                      mrace == "4" ~ "Puerto Rican",
+                      mrace == "8" ~ "Other"),
+    babysex = as.factor(babysex),
+    frace = as.factor(frace),
+    malform = as.factor(malform),
+    mrace = as.factor(mrace))
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+skimr::skim(birthweight_raw)
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
-
-```{r cars}
-summary(cars)
 ```
 
-## Including Plots
+```{r}
+model1 = lm(bwt ~babysex + bhead + blength + delwt + fincome, data = birthweight_raw)
+summary(model1)
+broom::tidy(model1)
 
-You can also embed plots, for example:
+birthweight_raw %>% 
+  modelr::add_residuals(model1) %>% 
+  modelr::add_predictions(model1) %>% 
+  ggplot(aes(x = pred, y = resid,color=babysex))+
+  geom_point(alpha = 0.3)+
+  geom_smooth(color = "green",method = "lm", se = F)+
+  facet_grid(. ~ babysex)+
+  labs(
+    x = "Fitted Value",
+    y = "Residuals",
+    title = "Plot of Residuals against Fitted Value"
+  )
 
-```{r pressure, echo=FALSE}
-plot(pressure)
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+```{r}
+model2 = lm(bwt ~blength + gaweeks, data = birthweight_raw)
+summary(model2)
+broom::tidy(model2)
+
+```
+
+
+
+```{r}
+model3 = lm(bwt ~bhead + blength + babysex + 
+              bhead * blength + bhead * babysex + blength * babysex + bhead * blength * babysex, data = birthweight_raw)
+summary(model3)
+broom::tidy(model3)
+
+```
+
+
