@@ -129,4 +129,84 @@ cv_df %>%
 ```
 
 # Problem 2
+```{r}
+weather_df = 
+  rnoaa::meteo_pull_monitors(
+    c("USW00094728"),
+    var = c("PRCP", "TMIN", "TMAX"), 
+    date_min = "2017-01-01",
+    date_max = "2017-12-31") %>%
+  mutate(
+    name = recode(id, USW00094728 = "CentralPark_NY"),
+    tmin = tmin / 10,
+    tmax = tmax / 10) %>%
+  select(name, id, everything())
+weather_df 
+```
 
+```{r}
+bootstrap_r =
+  weather_df %>% 
+  modelr::bootstrap(n = 5000) %>% 
+  mutate(
+    models = map(strap, ~lm( tmax ~ tmin , data = .x) ),
+    results = map(models, broom::glance)) %>% 
+  select(.id, results) %>% 
+  unnest(results)
+
+bootstrap_r
+
+bootstrap_r %>% 
+ggplot(aes(x = r.squared)) + 
+  geom_density() +
+   labs(
+      x = "R squared values",
+      y = "Density",
+      title = "Distribution of R Squared Estimates")
+
+bootstrap_r%>% 
+  summarize(
+    CI_lower = quantile(r.squared, 0.025),
+    CI_upper = quantile(r.squared, 0.975)
+  ) %>% 
+  knitr::kable()
+
+
+```
+
+```{r}
+bootstrap_log =
+  weather_df %>% 
+  modelr::bootstrap(n = 5000)%>% 
+  mutate(
+    models = map(strap, ~lm( tmax ~ tmin , data = .x) ),
+    results = map(models, broom::tidy)) %>% 
+  select(.id, results) %>% 
+  unnest(results)%>% 
+  select(.id, term, estimate) %>% 
+  pivot_wider(
+    names_from = "term",
+    values_from = "estimate"
+  ) %>% 
+  mutate(
+    log = log(`(Intercept)` * tmin)
+  ) 
+bootstrap_log
+
+bootstrap_log %>% 
+ggplot(aes(x = log)) + 
+  geom_density() +
+   labs(
+      x = "Log values",
+      y = "Density",
+      title = "Distribution of log valu")
+
+bootstrap_log%>% 
+  summarize(
+    CI_lower = quantile(log, 0.025),
+    CI_upper = quantile(log, 0.975)
+  ) %>% 
+  knitr::kable()
+
+
+```
