@@ -2,7 +2,7 @@
 title: "p8105_hw6_fs2757"
 author: "FEI SUN"
 date: "2021/12/2"
-output: html_document
+output: github_document
 ---
 
 ```{r setup, include=FALSE}
